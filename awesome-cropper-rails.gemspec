@@ -15,8 +15,8 @@ Gem::Specification.new do |gem|
   gem.required_rubygems_version = ">= 1.3.6"
   gem.rubyforge_project         = "awesome-cropper-rails"
 
-  gem.add_runtime_dependency= "imgareaselect-rails"
-  gem.add_runtime_dependency= "twitter-bootstrap-rails"
+  gem.add_runtime_dependency "imgareaselect-rails"
+  gem.add_runtime_dependency "twitter-bootstrap-rails"
 
   gem.files         = `git ls-files`.split($/)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
