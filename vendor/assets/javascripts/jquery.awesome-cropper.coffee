@@ -52,7 +52,7 @@ $.awesomeCropper = (inputAttachTo, options) ->
   # File chooser
   $fileSelect = input('file')
   $container.append(
-    div().addClass('span12 control-group')
+    div().addClass('control-group')
       .append($fileSelect)
   )
 
@@ -62,10 +62,8 @@ $.awesomeCropper = (inputAttachTo, options) ->
   $urlSelectButton.val('Upload from url')
 
   $container.append(
-    div().addClass('span4 control-group')
+    div().addClass('control-group form-inline')
       .append($urlSelect)
-  ).append(
-    div().addClass('span7 control-group')
       .append($urlSelectButton)
   )
 
@@ -73,8 +71,7 @@ $.awesomeCropper = (inputAttachTo, options) ->
   $dropArea = div().html('or Drop file here')
   $dropArea.addClass('awesome-cropper-drop-area well')
   $container.append(
-    div().addClass('span12 control-group')
-    .append($dropArea)
+    $dropArea
   )
 
   # Progress bar
@@ -97,7 +94,7 @@ $.awesomeCropper = (inputAttachTo, options) ->
     'aria-hidden': "true"
 
   $imagesContainer = div().append(
-    div().addClass('modal-body').append(
+    div().addClass('modal-body row-fluid').append(
       div().addClass('span9')
         .append($sourceIm)
     ).append(
@@ -153,6 +150,20 @@ $.awesomeCropper = (inputAttachTo, options) ->
     image.imgAreaSelect
       remove: true
 
+  fixSize = (img) ->
+    tempImage = new Image()
+    width = 0
+
+    tempImage.onload = () ->  
+      width = tempImage.width
+      r = width / img.width()
+      $input_x.val($input_x.val() * r);
+      $input_y.val($input_y.val() * r);
+      $input_w.val($input_w.val() * r);
+      $input_h.val($input_h.val() * r);
+
+    tempImage.src = img.attr('src')
+
   # Plugin images loading function
   readFile = (file) ->
     reader = new FileReader()
@@ -181,9 +192,10 @@ $.awesomeCropper = (inputAttachTo, options) ->
 
   saveCrop = () ->
     $input_url.val($sourceIm.attr('src'))
+    fixSize($sourceIm)
     cleanImages()
 
-  # Setup the dnd listeners.
+  # Setup the listeners
   $fileSelect.bind('change', handleFileSelect)
   $dropArea.bind('dragover', handleDragOver)
   $dropArea.bind('drop', handleDropFileSelect)
@@ -199,7 +211,13 @@ $.awesomeCropper = (inputAttachTo, options) ->
     removeAreaSelect($sourceIm)
 
 
-# Adds plugin object to jQuery
+###
+# jQuery Awesome Cropper plugin
+#
+# Copyright 2013 8xx8, vdv73rus
+#
+# v0.0.2
+####
 $.fn.extend
   awesomeCropper: (options) ->
     return @each ()->
