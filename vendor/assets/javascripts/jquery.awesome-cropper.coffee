@@ -30,24 +30,15 @@ $.awesomeCropper = (inputAttachTo, options) ->
   image = () ->
     return $('<img/>')
 
-  generateImputName = (f) ->
-    name = $inputAttachTo.attr('name')
-    if name.match /\]$/
-      name.replace /\]$/, "_#{f}]"
-    else
-      name + "_#{f}"
-
-
   # Main box
   $container = div().insertAfter($inputAttachTo).addClass('awesome-cropper')
 
-  # Inputs with URL, width, height, x, y
-  $input_url = input('hidden').attr('name', generateImputName('url'))
-  $input_x   = input('hidden').attr('name', generateImputName('x'))
-  $input_y   = input('hidden').attr('name', generateImputName('y'))
-  $input_w   = input('hidden').attr('name', generateImputName('w'))
-  $input_h   = input('hidden').attr('name', generateImputName('h'))
-  $container.append($input_url).append($input_x).append($input_y).append($input_w).append($input_h)
+  $cropSandbox = $('<canvas></canvas>')
+  $cropSandbox.attr
+    width: settings.width
+    height: settings.height
+
+  $container.append($cropSandbox)
 
   # File chooser
   $fileSelect = input('file')
@@ -67,24 +58,15 @@ $.awesomeCropper = (inputAttachTo, options) ->
       .append($urlSelectButton)
   )
 
-  # Drop area
-  $dropArea = div().html('or Drop file here')
-  $dropArea.addClass('awesome-cropper-drop-area well')
-  $container.append(
-    $dropArea
-  )
-
   # Progress bar
   $progressBar = div().addClass('progress progress-striped active hide').append(
     div().addClass('bar').css('width', '100%')
   )
   $container.append($progressBar)
 
-  # Image and preview
-  $previewIm = image().css
-    width: settings.width + "px"
-    height: settings.height + "px"
-    'max-width': 'none'
+  # Result Image
+  $resultIm = image()
+  $container.append($resultIm)
 
   # Modal dialog with cropping
   $sourceIm = image()
@@ -98,11 +80,8 @@ $.awesomeCropper = (inputAttachTo, options) ->
       div().addClass('span9')
         .append($sourceIm)
     ).append(
-      div().addClass('span3 preview').css
-        width: settings.width + "px"
-        height: settings.height + "px"
-        overflow: 'hidden'
-      .append($previewIm)
+      div().addClass('span3 preview')
+      .append($cropSandbox)
     )
   ).append(
     div().addClass('modal-footer').append($cancelButton).append($applyButton)
@@ -118,51 +97,51 @@ $.awesomeCropper = (inputAttachTo, options) ->
     $imagesContainer.modal()
     $progressBar.addClass('hide')
 
+  setOriginalSize = (img) ->
+    tempImage = new Image()
+
+    tempImage.onload = () ->  
+      width = tempImage.width
+      img.attr
+        'data-original-width': tempImage.width
+        'data-original-height': tempImage.height
+
+    tempImage.src = img.attr('src')
+
   setImages = (uri) ->
-    $previewIm.attr('src', uri)
-    $sourceIm.attr('src', uri)
+    $sourceIm.attr('src', uri).load ->
+      setOriginalSize($sourceIm)
+      removeLoading()
     setAreaSelect($sourceIm)
 
   cleanImages = () ->
-    $previewIm.attr('src', '')
     $sourceIm.attr('src', '')
 
   setAreaSelect = (image) ->
     image.imgAreaSelect
       aspectRatio: '1:1' 
       handles: true 
-      onSelectChange: (img, selection) =>
-        scaleX = 100 / (selection.width || 1);
-        scaleY = 100 / (selection.height || 1);
-
-        $previewIm.css
-          width: Math.round(scaleX * $(img).width()) + 'px',
-          height: Math.round(scaleY * $(img).height()) + 'px',
-          marginLeft: '-' + Math.round(100/selection.width * selection.x1) + 'px'
-          marginTop: '-' + Math.round(100/selection.height * selection.y1) + 'px'
       onSelectEnd: (img, selection) =>
-        $input_x.val(selection.x1);
-        $input_y.val(selection.y1);
-        $input_w.val(selection.width);
-        $input_h.val(selection.height);
+        r = $sourceIm.attr('data-original-width') / $sourceIm.width()
+        console.log(r)
+        context = $cropSandbox.get(0).getContext('2d')
+
+        sourceX = Math.round(selection.x1 * r)
+        sourceY = Math.round(selection.y1 * r)
+        sourceWidth = Math.round(selection.width * r)
+        sourceHeight = Math.round(selection.height * r)
+        destX = 0;
+        destY = 0;
+        destWidth = settings.width;
+        destHeight = settings.height;
+
+        console.log(sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight)
+     
+        context.drawImage($sourceIm.get(0), sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight)
 
   removeAreaSelect = (image) ->
     image.imgAreaSelect
       remove: true
-
-  fixSize = (img) ->
-    tempImage = new Image()
-    width = 0
-
-    tempImage.onload = () ->  
-      width = tempImage.width
-      r = width / img.width()
-      $input_x.val($input_x.val() * r);
-      $input_y.val($input_y.val() * r);
-      $input_w.val($input_w.val() * r);
-      $input_h.val($input_h.val() * r);
-
-    tempImage.src = img.attr('src')
 
   # Plugin images loading function
   readFile = (file) ->
@@ -172,7 +151,6 @@ $.awesomeCropper = (inputAttachTo, options) ->
 
     reader.onload = (e) ->
       setImages(e.target.result)
-      removeLoading() 
 
     reader.readAsDataURL(file)
 
@@ -191,20 +169,23 @@ $.awesomeCropper = (inputAttachTo, options) ->
     readFile(evt.target.files[0])
 
   saveCrop = () ->
-    $input_url.val($sourceIm.attr('src'))
-    fixSize($sourceIm)
+    result = $cropSandbox.get(0).toDataURL()
+    $resultIm.attr('src', result)
+    $inputAttachTo.val(result)
     cleanImages()
 
   # Setup the listeners
   $fileSelect.bind('change', handleFileSelect)
-  $dropArea.bind('dragover', handleDragOver)
-  $dropArea.bind('drop', handleDropFileSelect)
+  $container.bind('dragover', handleDragOver)
+  $container.bind('drop', handleDropFileSelect)
   $urlSelectButton.click ->
+    return unless $urlSelect.val().match(/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/)
     setLoading()
-    setImages($urlSelect.val()).load () ->
-      removeLoading()
+    setImages($urlSelect.val())
+
   $cancelButton.click ->
     removeAreaSelect($sourceIm)
+
   $applyButton.click ->
     saveCrop()
     $imagesContainer.modal('hide')
